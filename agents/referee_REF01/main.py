@@ -160,7 +160,7 @@ class Referee:
                   player_A_endpoint: str, player_B_endpoint: str,
                   league_id: str, round_id: int) -> dict:
         """
-        Run a complete match between two players (happy path).
+        Run a complete match between two players with timeout and retry handling.
 
         Args:
             match_id: Match identifier
@@ -174,8 +174,10 @@ class Referee:
         Returns:
             Match result dictionary
 
-        NOTE: This is a simplified happy-path implementation for Phase 3.
-        No timeouts, retries, or error handling.
+        Phase 4: Now includes timeout handling and retry logic.
+        - 5 second timeout for GAME_JOIN_ACK with 1 retry
+        - 30 second timeout for CHOOSE_PARITY_RESPONSE with 1 retry
+        - Technical loss handling after retry failure
         """
         from datetime import datetime
         import game_logic
@@ -184,14 +186,24 @@ class Referee:
         print(f"Player A: {player_A_id} ({player_A_endpoint})")
         print(f"Player B: {player_B_id} ({player_B_endpoint})")
 
-        # Step 1: Send GAME_INVITATION to both players
+        # Timeout configurations
+        JOIN_ACK_TIMEOUT = 5  # seconds
+        PARITY_RESPONSE_TIMEOUT = 30  # seconds
+        MAX_RETRIES = 1
+
+        # Track timeouts for technical loss
+        player_A_timeout = False
+        player_B_timeout = False
+        technical_loss_player = None
+
+        # Step 1: Send GAME_INVITATION to both players with timeout and retry
         print("\nStep 1: Sending GAME_INVITATION to both players...")
 
         invitation_A = self.mcp_client.format_message(
             message_type="GAME_INVITATION",
             sender=f"referee:{self.referee_id}",
             payload={
-                "auth_token": "tok-ref-placeholder",  # Placeholder for Phase 3
+                "auth_token": "tok-ref-placeholder",
                 "league_id": league_id,
                 "round_id": round_id,
                 "match_id": match_id,
@@ -215,13 +227,100 @@ class Referee:
             }
         )
 
-        ack_A = self.mcp_client.send_request("handle_game_invitation", invitation_A, player_A_endpoint)
-        ack_B = self.mcp_client.send_request("handle_game_invitation", invitation_B, player_B_endpoint)
+        # Send invitation to Player A with retry
+        ack_A = None
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                print(f"  Sending invitation to Player A (attempt {attempt + 1}/{MAX_RETRIES + 1})...")
+                ack_A = self.mcp_client.send_request(
+                    "handle_game_invitation",
+                    invitation_A,
+                    player_A_endpoint,
+                    timeout=JOIN_ACK_TIMEOUT
+                )
+                print(f"  Player A accepted: {ack_A.get('accept')}")
+                break
+            except Exception as e:
+                if "timeout" in str(e).lower() and attempt < MAX_RETRIES:
+                    print(f"  ⚠️ TIMEOUT: Player A did not respond within {JOIN_ACK_TIMEOUT}s. Retrying...")
+                    self.logger.log_event("TIMEOUT_GAME_JOIN_ACK", {
+                        "player_id": player_A_id,
+                        "match_id": match_id,
+                        "attempt": attempt + 1,
+                        "will_retry": True
+                    })
+                elif "timeout" in str(e).lower():
+                    print(f"  ❌ TECHNICAL LOSS: Player A failed to respond after {MAX_RETRIES} retries")
+                    self.logger.log_event("TECHNICAL_LOSS_GAME_JOIN_ACK", {
+                        "player_id": player_A_id,
+                        "match_id": match_id,
+                        "total_attempts": MAX_RETRIES + 1
+                    })
+                    player_A_timeout = True
+                    technical_loss_player = player_A_id
+                    break
+                else:
+                    raise
 
-        print(f"  Player A accepted: {ack_A.get('accept')}")
-        print(f"  Player B accepted: {ack_B.get('accept')}")
+        # Send invitation to Player B with retry
+        ack_B = None
+        if not player_A_timeout:  # Only if Player A didn't timeout
+            for attempt in range(MAX_RETRIES + 1):
+                try:
+                    print(f"  Sending invitation to Player B (attempt {attempt + 1}/{MAX_RETRIES + 1})...")
+                    ack_B = self.mcp_client.send_request(
+                        "handle_game_invitation",
+                        invitation_B,
+                        player_B_endpoint,
+                        timeout=JOIN_ACK_TIMEOUT
+                    )
+                    print(f"  Player B accepted: {ack_B.get('accept')}")
+                    break
+                except Exception as e:
+                    if "timeout" in str(e).lower() and attempt < MAX_RETRIES:
+                        print(f"  ⚠️ TIMEOUT: Player B did not respond within {JOIN_ACK_TIMEOUT}s. Retrying...")
+                        self.logger.log_event("TIMEOUT_GAME_JOIN_ACK", {
+                            "player_id": player_B_id,
+                            "match_id": match_id,
+                            "attempt": attempt + 1,
+                            "will_retry": True
+                        })
+                    elif "timeout" in str(e).lower():
+                        print(f"  ❌ TECHNICAL LOSS: Player B failed to respond after {MAX_RETRIES} retries")
+                        self.logger.log_event("TECHNICAL_LOSS_GAME_JOIN_ACK", {
+                            "player_id": player_B_id,
+                            "match_id": match_id,
+                            "total_attempts": MAX_RETRIES + 1
+                        })
+                        player_B_timeout = True
+                        technical_loss_player = player_B_id
+                        break
+                    else:
+                        raise
 
-        # Step 2: Send CHOOSE_PARITY_CALL to both players
+        # Handle technical loss at invitation stage
+        if player_A_timeout or player_B_timeout:
+            print(f"\n⚠️ Match ending due to technical loss at invitation stage")
+            winner_id = player_B_id if player_A_timeout else player_A_id
+            loser_id = technical_loss_player
+
+            result = {
+                "winner_id": winner_id,
+                "loser_id": loser_id,
+                "is_draw": False,
+                "drawn_number": None,
+                "number_parity": None,
+                "player_A_choice": None,
+                "player_B_choice": None,
+                "technical_loss": True,
+                "technical_loss_reason": f"{technical_loss_player} failed to respond to GAME_INVITATION"
+            }
+
+            # Skip to reporting
+            self._report_technical_loss(match_id, league_id, round_id, result, player_A_id, player_B_id)
+            return result
+
+        # Step 2: Send CHOOSE_PARITY_CALL to both players with timeout and retry
         print("\nStep 2: Sending CHOOSE_PARITY_CALL to both players...")
 
         parity_call_A = self.mcp_client.format_message(
@@ -258,16 +357,104 @@ class Referee:
             }
         )
 
-        choice_A = self.mcp_client.send_request("parity_choose", parity_call_A, player_A_endpoint)
-        choice_B = self.mcp_client.send_request("parity_choose", parity_call_B, player_B_endpoint)
+        # Send parity call to Player A with retry
+        choice_A = None
+        player_A_choice = None
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                print(f"  Sending parity call to Player A (attempt {attempt + 1}/{MAX_RETRIES + 1})...")
+                choice_A = self.mcp_client.send_request(
+                    "parity_choose",
+                    parity_call_A,
+                    player_A_endpoint,
+                    timeout=PARITY_RESPONSE_TIMEOUT
+                )
+                player_A_choice = choice_A.get("parity_choice")
+                print(f"  Player A chose: {player_A_choice}")
+                break
+            except Exception as e:
+                if "timeout" in str(e).lower() and attempt < MAX_RETRIES:
+                    print(f"  ⚠️ TIMEOUT: Player A did not respond within {PARITY_RESPONSE_TIMEOUT}s. Retrying...")
+                    self.logger.log_event("TIMEOUT_CHOOSE_PARITY", {
+                        "player_id": player_A_id,
+                        "match_id": match_id,
+                        "attempt": attempt + 1,
+                        "will_retry": True
+                    })
+                elif "timeout" in str(e).lower():
+                    print(f"  ❌ TECHNICAL LOSS: Player A failed to respond after {MAX_RETRIES} retries")
+                    self.logger.log_event("TECHNICAL_LOSS_CHOOSE_PARITY", {
+                        "player_id": player_A_id,
+                        "match_id": match_id,
+                        "total_attempts": MAX_RETRIES + 1
+                    })
+                    player_A_timeout = True
+                    technical_loss_player = player_A_id
+                    break
+                else:
+                    raise
 
-        player_A_choice = choice_A.get("parity_choice")
-        player_B_choice = choice_B.get("parity_choice")
+        # Send parity call to Player B with retry
+        choice_B = None
+        player_B_choice = None
+        if not player_A_timeout:  # Only if Player A didn't timeout
+            for attempt in range(MAX_RETRIES + 1):
+                try:
+                    print(f"  Sending parity call to Player B (attempt {attempt + 1}/{MAX_RETRIES + 1})...")
+                    choice_B = self.mcp_client.send_request(
+                        "parity_choose",
+                        parity_call_B,
+                        player_B_endpoint,
+                        timeout=PARITY_RESPONSE_TIMEOUT
+                    )
+                    player_B_choice = choice_B.get("parity_choice")
+                    print(f"  Player B chose: {player_B_choice}")
+                    break
+                except Exception as e:
+                    if "timeout" in str(e).lower() and attempt < MAX_RETRIES:
+                        print(f"  ⚠️ TIMEOUT: Player B did not respond within {PARITY_RESPONSE_TIMEOUT}s. Retrying...")
+                        self.logger.log_event("TIMEOUT_CHOOSE_PARITY", {
+                            "player_id": player_B_id,
+                            "match_id": match_id,
+                            "attempt": attempt + 1,
+                            "will_retry": True
+                        })
+                    elif "timeout" in str(e).lower():
+                        print(f"  ❌ TECHNICAL LOSS: Player B failed to respond after {MAX_RETRIES} retries")
+                        self.logger.log_event("TECHNICAL_LOSS_CHOOSE_PARITY", {
+                            "player_id": player_B_id,
+                            "match_id": match_id,
+                            "total_attempts": MAX_RETRIES + 1
+                        })
+                        player_B_timeout = True
+                        technical_loss_player = player_B_id
+                        break
+                    else:
+                        raise
 
-        print(f"  Player A chose: {player_A_choice}")
-        print(f"  Player B chose: {player_B_choice}")
+        # Handle technical loss at parity choice stage
+        if player_A_timeout or player_B_timeout:
+            print(f"\n⚠️ Match ending due to technical loss at parity choice stage")
+            winner_id = player_B_id if player_A_timeout else player_A_id
+            loser_id = technical_loss_player
 
-        # Step 3: Draw number and determine winner
+            result = {
+                "winner_id": winner_id,
+                "loser_id": loser_id,
+                "is_draw": False,
+                "drawn_number": None,
+                "number_parity": None,
+                "player_A_choice": player_A_choice,
+                "player_B_choice": player_B_choice,
+                "technical_loss": True,
+                "technical_loss_reason": f"{technical_loss_player} failed to respond to CHOOSE_PARITY_CALL"
+            }
+
+            # Skip to reporting
+            self._report_technical_loss(match_id, league_id, round_id, result, player_A_id, player_B_id)
+            return result
+
+        # Step 3: Draw number and determine winner (normal path)
         print("\nStep 3: Drawing number and determining winner...")
 
         drawn_number = game_logic.draw_random_number()
@@ -275,6 +462,7 @@ class Referee:
             drawn_number, player_A_choice, player_B_choice,
             player_A_id, player_B_id
         )
+        result["technical_loss"] = False
 
         print(f"  Drawn number: {drawn_number} ({result['number_parity']})")
         if result['is_draw']:
@@ -355,6 +543,54 @@ class Referee:
         print(f"\n=== Match {match_id} Complete ===\n")
 
         return result
+
+    def _report_technical_loss(self, match_id: str, league_id: str, round_id: int,
+                                result: dict, player_A_id: str, player_B_id: str) -> None:
+        """
+        Report technical loss result to League Manager.
+
+        Args:
+            match_id: Match identifier
+            league_id: League identifier
+            round_id: Round number
+            result: Match result with technical loss info
+            player_A_id: Player A's ID
+            player_B_id: Player B's ID
+        """
+        print("\nReporting technical loss to League Manager...")
+
+        # Calculate scores (winner gets 3, loser gets 0)
+        score = {
+            result['winner_id']: 3,
+            result['loser_id']: 0
+        }
+
+        match_report = self.mcp_client.format_message(
+            message_type="MATCH_RESULT_REPORT",
+            sender=f"referee:{self.referee_id}",
+            payload={
+                "auth_token": "tok-ref-placeholder",
+                "league_id": league_id,
+                "round_id": round_id,
+                "match_id": match_id,
+                "game_type": "even_odd",
+                "result": {
+                    "winner": result['winner_id'],
+                    "score": score,
+                    "details": {
+                        "technical_loss": True,
+                        "technical_loss_reason": result['technical_loss_reason'],
+                        "status": "TECHNICAL_LOSS"
+                    }
+                }
+            }
+        )
+
+        league_manager_endpoint = f"http://localhost:{self.system_config.network.league_manager_port}/mcp"
+        report_ack = self.mcp_client.send_request("report_match_result", match_report, league_manager_endpoint)
+
+        print(f"  League Manager acknowledged: {report_ack.get('status')}")
+        print(f"\n=== Match {match_id} Complete (Technical Loss) ===\n")
 
 
 # Global referee instance

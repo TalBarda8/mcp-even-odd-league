@@ -170,6 +170,54 @@ class Player:
         """
         pass
 
+    def validate_state_transition(self, current_state: str, message_type: str) -> bool:
+        """
+        Validate if a message can be processed in the current state.
+
+        Args:
+            current_state: Current player state
+            message_type: Incoming message type
+
+        Returns:
+            True if transition is valid, False otherwise
+
+        Phase 4: Simple state validation
+        State flow: IDLE → INVITED → CHOOSING → WAITING_RESULT → IDLE
+        """
+        valid_transitions = {
+            "IDLE": ["GAME_INVITATION"],
+            "INVITED": ["CHOOSE_PARITY_CALL"],
+            "CHOOSING": ["GAME_OVER"],  # After sending response, we're effectively waiting
+            "WAITING_RESULT": ["GAME_OVER"]
+        }
+
+        return message_type in valid_transitions.get(current_state, [])
+
+    def transition_state(self, new_state: str, reason: str = "") -> None:
+        """
+        Transition to a new state.
+
+        Args:
+            new_state: Target state
+            reason: Reason for transition
+
+        Phase 4: Basic state tracking with logging
+        """
+        old_state = self.state
+        self.state = new_state
+
+        log_msg = f"[{self.player_id}] State transition: {old_state} → {new_state}"
+        if reason:
+            log_msg += f" (Reason: {reason})"
+        print(log_msg)
+
+        self.logger.log_event("STATE_TRANSITION", {
+            "player_id": self.player_id,
+            "old_state": old_state,
+            "new_state": new_state,
+            "reason": reason
+        })
+
 
 # Global player instance
 player = None
