@@ -105,19 +105,41 @@ def handle_league_register_request(league_manager, request_data: dict) -> dict:
     }
 
 
-def handle_match_result_report(request_data: dict) -> dict:
+def handle_match_result_report(league_manager, request_data: dict) -> dict:
     """
-    Handle MATCH_RESULT_REPORT message.
+    Handle MATCH_RESULT_REPORT message from Referee.
 
     Args:
+        league_manager: LeagueManager instance
         request_data: Request payload
 
     Returns:
-        Response payload
+        MATCH_RESULT_ACK response payload
 
-    TODO: Implement match result processing
+    NOTE: Phase 3 - Just log the result, no standings update yet
     """
-    pass
+    from datetime import datetime
+
+    match_id = request_data.get("match_id")
+    round_id = request_data.get("round_id")
+    result = request_data.get("result", {})
+
+    print(f"\n[League Manager] Received MATCH_RESULT_REPORT")
+    print(f"  Match ID: {match_id}")
+    print(f"  Round ID: {round_id}")
+    print(f"  Winner: {result.get('winner')}")
+    print(f"  Score: {result.get('score')}")
+    print(f"  Details: {result.get('details')}")
+
+    # For Phase 3, just acknowledge - no persistence
+    return {
+        "protocol": "league.v2",
+        "message_type": "MATCH_RESULT_ACK",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "status": "ACCEPTED",
+        "match_id": match_id,
+        "round_id": round_id
+    }
 
 
 def handle_league_query(request_data: dict) -> dict:

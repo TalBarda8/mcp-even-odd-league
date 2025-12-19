@@ -224,10 +224,35 @@ def handle_mcp_request():
         request_id = data.get("id")
 
         # Route based on method
-        # For Phase 2, we only implement basic routing - handlers are stubs
-        if method in ["game_join_invite", "choose_parity", "game_over",
-                      "round_announcement", "standings_update", "round_completed", "league_completed"]:
-            # All player methods return a simple acknowledgment for now
+        if method == "handle_game_invitation":
+            from handlers import handle_game_invitation
+            result = handle_game_invitation(player, params)
+            return jsonify({
+                "jsonrpc": "2.0",
+                "result": result,
+                "id": request_id
+            })
+
+        elif method == "parity_choose":
+            from handlers import handle_parity_choose
+            result = handle_parity_choose(player, params)
+            return jsonify({
+                "jsonrpc": "2.0",
+                "result": result,
+                "id": request_id
+            })
+
+        elif method == "notify_match_result":
+            from handlers import handle_notify_match_result
+            result = handle_notify_match_result(player, params)
+            return jsonify({
+                "jsonrpc": "2.0",
+                "result": result,
+                "id": request_id
+            })
+
+        elif method in ["round_announcement", "standings_update", "round_completed", "league_completed"]:
+            # Other player methods return a simple acknowledgment for now
             return jsonify({
                 "jsonrpc": "2.0",
                 "result": {

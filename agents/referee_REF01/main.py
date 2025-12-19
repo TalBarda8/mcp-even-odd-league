@@ -156,6 +156,206 @@ class Referee:
         """
         pass
 
+    def run_match(self, match_id: str, player_A_id: str, player_B_id: str,
+                  player_A_endpoint: str, player_B_endpoint: str,
+                  league_id: str, round_id: int) -> dict:
+        """
+        Run a complete match between two players (happy path).
+
+        Args:
+            match_id: Match identifier
+            player_A_id: Player A's ID
+            player_B_id: Player B's ID
+            player_A_endpoint: Player A's MCP endpoint
+            player_B_endpoint: Player B's MCP endpoint
+            league_id: League identifier
+            round_id: Round number
+
+        Returns:
+            Match result dictionary
+
+        NOTE: This is a simplified happy-path implementation for Phase 3.
+        No timeouts, retries, or error handling.
+        """
+        from datetime import datetime
+        import game_logic
+
+        print(f"\n=== Starting Match {match_id} ===")
+        print(f"Player A: {player_A_id} ({player_A_endpoint})")
+        print(f"Player B: {player_B_id} ({player_B_endpoint})")
+
+        # Step 1: Send GAME_INVITATION to both players
+        print("\nStep 1: Sending GAME_INVITATION to both players...")
+
+        invitation_A = self.mcp_client.format_message(
+            message_type="GAME_INVITATION",
+            sender=f"referee:{self.referee_id}",
+            payload={
+                "auth_token": "tok-ref-placeholder",  # Placeholder for Phase 3
+                "league_id": league_id,
+                "round_id": round_id,
+                "match_id": match_id,
+                "game_type": "even_odd",
+                "role_in_match": "PLAYER_A",
+                "opponent_id": player_B_id
+            }
+        )
+
+        invitation_B = self.mcp_client.format_message(
+            message_type="GAME_INVITATION",
+            sender=f"referee:{self.referee_id}",
+            payload={
+                "auth_token": "tok-ref-placeholder",
+                "league_id": league_id,
+                "round_id": round_id,
+                "match_id": match_id,
+                "game_type": "even_odd",
+                "role_in_match": "PLAYER_B",
+                "opponent_id": player_A_id
+            }
+        )
+
+        ack_A = self.mcp_client.send_request("handle_game_invitation", invitation_A, player_A_endpoint)
+        ack_B = self.mcp_client.send_request("handle_game_invitation", invitation_B, player_B_endpoint)
+
+        print(f"  Player A accepted: {ack_A.get('accept')}")
+        print(f"  Player B accepted: {ack_B.get('accept')}")
+
+        # Step 2: Send CHOOSE_PARITY_CALL to both players
+        print("\nStep 2: Sending CHOOSE_PARITY_CALL to both players...")
+
+        parity_call_A = self.mcp_client.format_message(
+            message_type="CHOOSE_PARITY_CALL",
+            sender=f"referee:{self.referee_id}",
+            payload={
+                "auth_token": "tok-ref-placeholder",
+                "match_id": match_id,
+                "player_id": player_A_id,
+                "game_type": "even_odd",
+                "context": {
+                    "opponent_id": player_B_id,
+                    "round_id": round_id,
+                    "your_standings": {"wins": 0, "losses": 0, "draws": 0, "points": 0}
+                },
+                "deadline": (datetime.utcnow().isoformat() + "Z")
+            }
+        )
+
+        parity_call_B = self.mcp_client.format_message(
+            message_type="CHOOSE_PARITY_CALL",
+            sender=f"referee:{self.referee_id}",
+            payload={
+                "auth_token": "tok-ref-placeholder",
+                "match_id": match_id,
+                "player_id": player_B_id,
+                "game_type": "even_odd",
+                "context": {
+                    "opponent_id": player_A_id,
+                    "round_id": round_id,
+                    "your_standings": {"wins": 0, "losses": 0, "draws": 0, "points": 0}
+                },
+                "deadline": (datetime.utcnow().isoformat() + "Z")
+            }
+        )
+
+        choice_A = self.mcp_client.send_request("parity_choose", parity_call_A, player_A_endpoint)
+        choice_B = self.mcp_client.send_request("parity_choose", parity_call_B, player_B_endpoint)
+
+        player_A_choice = choice_A.get("parity_choice")
+        player_B_choice = choice_B.get("parity_choice")
+
+        print(f"  Player A chose: {player_A_choice}")
+        print(f"  Player B chose: {player_B_choice}")
+
+        # Step 3: Draw number and determine winner
+        print("\nStep 3: Drawing number and determining winner...")
+
+        drawn_number = game_logic.draw_random_number()
+        result = game_logic.determine_winner(
+            drawn_number, player_A_choice, player_B_choice,
+            player_A_id, player_B_id
+        )
+
+        print(f"  Drawn number: {drawn_number} ({result['number_parity']})")
+        if result['is_draw']:
+            print(f"  Result: DRAW")
+        else:
+            print(f"  Winner: {result['winner_id']}")
+
+        # Step 4: Send GAME_OVER to both players
+        print("\nStep 4: Sending GAME_OVER to both players...")
+
+        game_over_msg = self.mcp_client.format_message(
+            message_type="GAME_OVER",
+            sender=f"referee:{self.referee_id}",
+            payload={
+                "auth_token": "tok-ref-placeholder",
+                "match_id": match_id,
+                "game_type": "even_odd",
+                "game_result": {
+                    "status": "DRAW" if result['is_draw'] else "WIN",
+                    "winner_player_id": result['winner_id'],
+                    "drawn_number": drawn_number,
+                    "number_parity": result['number_parity'],
+                    "choices": {
+                        player_A_id: player_A_choice,
+                        player_B_id: player_B_choice
+                    },
+                    "reason": f"Number {drawn_number} is {result['number_parity']}. " +
+                             (f"{result['winner_id']} wins." if not result['is_draw'] else "Both chose correctly. DRAW.")
+                }
+            }
+        )
+
+        ack_A = self.mcp_client.send_request("notify_match_result", game_over_msg, player_A_endpoint)
+        ack_B = self.mcp_client.send_request("notify_match_result", game_over_msg, player_B_endpoint)
+
+        print(f"  Player A acknowledged: {ack_A.get('status')}")
+        print(f"  Player B acknowledged: {ack_B.get('status')}")
+
+        # Step 5: Report result to League Manager
+        print("\nStep 5: Reporting result to League Manager...")
+
+        # Calculate scores (3 for win, 1 for draw, 0 for loss)
+        if result['is_draw']:
+            score = {player_A_id: 1, player_B_id: 1}
+        elif result['winner_id'] == player_A_id:
+            score = {player_A_id: 3, player_B_id: 0}
+        else:
+            score = {player_A_id: 0, player_B_id: 3}
+
+        match_report = self.mcp_client.format_message(
+            message_type="MATCH_RESULT_REPORT",
+            sender=f"referee:{self.referee_id}",
+            payload={
+                "auth_token": "tok-ref-placeholder",
+                "league_id": league_id,
+                "round_id": round_id,
+                "match_id": match_id,
+                "game_type": "even_odd",
+                "result": {
+                    "winner": result['winner_id'],
+                    "score": score,
+                    "details": {
+                        "drawn_number": drawn_number,
+                        "choices": {
+                            player_A_id: player_A_choice,
+                            player_B_id: player_B_choice
+                        },
+                        "status": "DRAW" if result['is_draw'] else "WIN"
+                    }
+                }
+            }
+        )
+
+        league_manager_endpoint = f"http://localhost:{self.system_config.network.league_manager_port}/mcp"
+        report_ack = self.mcp_client.send_request("report_match_result", match_report, league_manager_endpoint)
+
+        print(f"  League Manager acknowledged: {report_ack.get('status')}")
+        print(f"\n=== Match {match_id} Complete ===\n")
+
+        return result
+
 
 # Global referee instance
 referee = None

@@ -265,6 +265,16 @@ def handle_mcp_request():
                 "id": request_id
             })
 
+        elif method == "report_match_result":
+            from handlers import handle_match_result_report
+            result = handle_match_result_report(league_manager, params)
+
+            return jsonify({
+                "jsonrpc": "2.0",
+                "result": result,
+                "id": request_id
+            })
+
         else:
             return jsonify({
                 "jsonrpc": "2.0",
