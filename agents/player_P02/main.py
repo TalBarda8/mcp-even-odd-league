@@ -182,21 +182,82 @@ def handle_mcp_request():
 
     This endpoint receives JSON-RPC 2.0 requests.
     """
-    data = request.get_json()
+    from datetime import datetime
 
-    # For now, return a static JSON-RPC "OK" response
-    response = {
-        "jsonrpc": "2.0",
-        "result": {
-            "status": "OK",
-            "message": "Player is running",
-            "player_id": player.player_id if player else None,
-            "state": player.state if player else None
-        },
-        "id": data.get("id", 1)
-    }
+    try:
+        # Parse JSON request
+        data = request.get_json()
 
-    return jsonify(response)
+        if not data:
+            return jsonify({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32700,
+                    "message": "Parse error: Invalid JSON"
+                },
+                "id": None
+            }), 400
+
+        # Validate JSON-RPC structure
+        if "jsonrpc" not in data or data["jsonrpc"] != "2.0":
+            return jsonify({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid Request: jsonrpc must be '2.0'"
+                },
+                "id": data.get("id")
+            }), 400
+
+        if "method" not in data:
+            return jsonify({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid Request: missing 'method' field"
+                },
+                "id": data.get("id")
+            }), 400
+
+        method = data["method"]
+        params = data.get("params", {})
+        request_id = data.get("id")
+
+        # Route based on method
+        # For Phase 2, we only implement basic routing - handlers are stubs
+        if method in ["game_join_invite", "choose_parity", "game_over",
+                      "round_announcement", "standings_update", "round_completed", "league_completed"]:
+            # All player methods return a simple acknowledgment for now
+            return jsonify({
+                "jsonrpc": "2.0",
+                "result": {
+                    "protocol": "league.v2",
+                    "message_type": "ACK",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "status": "OK",
+                    "message": f"Player {player.player_id if player else 'unknown'} received {method}"
+                },
+                "id": request_id
+            })
+        else:
+            return jsonify({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32601,
+                    "message": f"Method not found: {method}"
+                },
+                "id": request_id
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32603,
+                "message": f"Internal error: {str(e)}"
+            },
+            "id": data.get("id") if 'data' in locals() else None
+        }), 500
 
 
 def main():

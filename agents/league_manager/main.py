@@ -193,20 +193,97 @@ def handle_mcp_request():
 
     This endpoint receives JSON-RPC 2.0 requests.
     """
-    data = request.get_json()
+    from datetime import datetime
 
-    # For now, return a static JSON-RPC "OK" response
-    response = {
-        "jsonrpc": "2.0",
-        "result": {
-            "status": "OK",
-            "message": "League Manager is running",
-            "league_id": league_manager.league_id if league_manager else None
-        },
-        "id": data.get("id", 1)
-    }
+    try:
+        # Parse JSON request
+        data = request.get_json()
 
-    return jsonify(response)
+        if not data:
+            return jsonify({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32700,
+                    "message": "Parse error: Invalid JSON"
+                },
+                "id": None
+            }), 400
+
+        # Validate JSON-RPC structure
+        if "jsonrpc" not in data or data["jsonrpc"] != "2.0":
+            return jsonify({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid Request: jsonrpc must be '2.0'"
+                },
+                "id": data.get("id")
+            }), 400
+
+        if "method" not in data:
+            return jsonify({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid Request: missing 'method' field"
+                },
+                "id": data.get("id")
+            }), 400
+
+        method = data["method"]
+        params = data.get("params", {})
+        request_id = data.get("id")
+
+        # Route based on method
+        if method == "register_player":
+            from handlers import handle_league_register_request
+            result = handle_league_register_request(league_manager, params)
+
+            # Add protocol fields
+            result["protocol"] = "league.v2"
+            result["message_type"] = "LEAGUE_REGISTER_RESPONSE"
+            result["timestamp"] = datetime.utcnow().isoformat() + "Z"
+
+            return jsonify({
+                "jsonrpc": "2.0",
+                "result": result,
+                "id": request_id
+            })
+
+        elif method == "register_referee":
+            from handlers import handle_referee_register_request
+            result = handle_referee_register_request(league_manager, params)
+
+            # Add protocol fields
+            result["protocol"] = "league.v2"
+            result["message_type"] = "REFEREE_REGISTER_RESPONSE"
+            result["timestamp"] = datetime.utcnow().isoformat() + "Z"
+
+            return jsonify({
+                "jsonrpc": "2.0",
+                "result": result,
+                "id": request_id
+            })
+
+        else:
+            return jsonify({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32601,
+                    "message": f"Method not found: {method}"
+                },
+                "id": request_id
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32603,
+                "message": f"Internal error: {str(e)}"
+            },
+            "id": data.get("id") if 'data' in locals() else None
+        }), 500
 
 
 def main():

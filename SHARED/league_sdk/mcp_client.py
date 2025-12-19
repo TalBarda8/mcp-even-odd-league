@@ -52,16 +52,73 @@ class MCPClient:
 
         Raises:
             Exception: On network error, timeout, or JSON-RPC error
-
-        TODO: Implement JSON-RPC request/response handling
         """
-        # TODO: Generate unique request ID
-        # TODO: Construct JSON-RPC 2.0 request envelope
-        # TODO: Send POST request to endpoint
-        # TODO: Wait for response with timeout
-        # TODO: Parse and validate response
-        # TODO: Return result or raise error
-        pass
+        import requests
+
+        # Use provided timeout or default
+        actual_timeout = timeout if timeout is not None else self.base_timeout
+
+        # Generate unique request ID
+        request_id = str(uuid.uuid4())
+
+        # Construct JSON-RPC 2.0 request envelope
+        rpc_request = {
+            "jsonrpc": self.jsonrpc_version,
+            "method": method,
+            "params": params,
+            "id": request_id
+        }
+
+        try:
+            # Send POST request to endpoint
+            response = requests.post(
+                endpoint,
+                json=rpc_request,
+                headers={"Content-Type": "application/json"},
+                timeout=actual_timeout
+            )
+
+            # Parse JSON response (even if HTTP error, might contain JSON-RPC error)
+            try:
+                rpc_response = response.json()
+            except ValueError:
+                # Not JSON, check HTTP status
+                response.raise_for_status()
+                raise Exception("Invalid response: not JSON")
+
+            # Check HTTP status only if we couldn't parse JSON-RPC error
+            if response.status_code >= 400 and "error" not in rpc_response:
+                response.raise_for_status()
+
+            # Validate JSON-RPC response structure
+            if "jsonrpc" not in rpc_response or rpc_response["jsonrpc"] != "2.0":
+                raise Exception("Invalid JSON-RPC response: missing or invalid 'jsonrpc' field")
+
+            if "id" not in rpc_response or rpc_response["id"] != request_id:
+                raise Exception("Invalid JSON-RPC response: missing or mismatched 'id' field")
+
+            # Check for error
+            if "error" in rpc_response:
+                error = rpc_response["error"]
+                error_code = error.get("code", -1)
+                error_message = error.get("message", "Unknown error")
+                error_data = error.get("data", None)
+                raise Exception(f"JSON-RPC error {error_code}: {error_message} (data: {error_data})")
+
+            # Return result
+            if "result" not in rpc_response:
+                raise Exception("Invalid JSON-RPC response: missing 'result' field")
+
+            return rpc_response["result"]
+
+        except requests.exceptions.Timeout:
+            raise Exception(f"Request timeout after {actual_timeout} seconds")
+        except requests.exceptions.ConnectionError as e:
+            raise Exception(f"Connection error: {str(e)}")
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"HTTP error: {str(e)}")
+        except ValueError as e:
+            raise Exception(f"Invalid JSON response: {str(e)}")
 
     def send_notification(self, method: str, params: Dict[str, Any], endpoint: str) -> None:
         """
@@ -71,13 +128,28 @@ class MCPClient:
             method: JSON-RPC method name
             params: Message payload
             endpoint: Target endpoint
-
-        TODO: Implement notification sending (fire-and-forget)
         """
-        # TODO: Construct JSON-RPC 2.0 notification (without id)
-        # TODO: Send POST request
-        # TODO: Do not wait for response
-        pass
+        import requests
+
+        # Construct JSON-RPC 2.0 notification (without id field)
+        rpc_notification = {
+            "jsonrpc": self.jsonrpc_version,
+            "method": method,
+            "params": params
+        }
+
+        try:
+            # Send POST request (fire-and-forget, short timeout)
+            requests.post(
+                endpoint,
+                json=rpc_notification,
+                headers={"Content-Type": "application/json"},
+                timeout=2  # Short timeout for notifications
+            )
+            # Do not wait for or process response
+        except Exception:
+            # Notifications are fire-and-forget, ignore errors
+            pass
 
     def format_message(self, message_type: str, sender: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
