@@ -1,0 +1,8 @@
+# League SDK Dependencies
+# Shared library for MCP Even/Odd League
+
+# HTTP client for MCP communication
+requests>=2.31.0
+
+# Pydantic for enhanced data validation (optional, using dataclasses for now)
+# pydantic>=2.0.0

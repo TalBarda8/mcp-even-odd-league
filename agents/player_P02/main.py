@@ -1,0 +1,233 @@
+"""
+Player - Main Entry Point
+
+Autonomous game participant. Handles match invitations, makes strategic decisions.
+Based on interfaces.md - PlayerInterface.
+"""
+
+import sys
+from pathlib import Path
+
+# Add SHARED to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "SHARED"))
+
+from flask import Flask, request, jsonify
+from league_sdk.config_loader import ConfigLoader
+from league_sdk.repositories import PlayerHistoryRepository
+from league_sdk.logger import JsonLogger
+from league_sdk.mcp_client import MCPClient
+from league_sdk.config_models import SystemConfig
+
+
+app = Flask(__name__)
+
+
+class Player:
+    """
+    Player Implementation
+
+    Implements PlayerInterface from interfaces.md
+    """
+
+    def __init__(self, player_id: str):
+        """
+        Initialize Player.
+
+        Args:
+            player_id: Player identifier (e.g., "P02")
+        """
+        self.player_id = player_id
+        self.config_loader = ConfigLoader()
+        self.system_config = self.config_loader.load_system()
+        self.history_repo = PlayerHistoryRepository(player_id)
+        self.logger = JsonLogger(f"player:{player_id}")
+        self.mcp_client = MCPClient()
+        self.state = "IDLE"
+        self.current_match = None
+        self.assigned_parity = None
+
+        print(f"Player initialized: {player_id}")
+
+    def start_player(self) -> None:
+        """
+        Start Player HTTP server and register with League Manager.
+
+        TODO: Implement server initialization and registration
+        """
+        print(f"Starting Player {self.player_id}")
+        # Server started by Flask app.run() below
+
+    def handle_round_announcement(self, round_id: int, matches: list) -> None:
+        """
+        Handle ROUND_ANNOUNCEMENT from League Manager.
+
+        Args:
+            round_id: Round number
+            matches: List of matches in this round
+
+        TODO: Implement round announcement processing
+        """
+        pass
+
+    def handle_game_join_invite(self, match_id: str, referee_endpoint: str,
+                                 opponent_id: str, league_id: str, round_id: int) -> None:
+        """
+        Handle GAME_JOIN_INVITE from Referee.
+
+        Args:
+            match_id: Match identifier
+            referee_endpoint: Referee's endpoint
+            opponent_id: Opponent player ID
+            league_id: League identifier
+            round_id: Round number
+
+        TODO: Implement invitation handling and decision logic
+        """
+        pass
+
+    def handle_choose_parity_request(self, match_id: str) -> None:
+        """
+        Handle CHOOSE_PARITY_REQUEST from Referee.
+
+        Args:
+            match_id: Match identifier
+
+        TODO: Implement parity choice request handling
+        """
+        pass
+
+    def handle_game_over(self, match_result: dict) -> None:
+        """
+        Handle GAME_OVER from Referee.
+
+        Args:
+            match_result: Complete match result
+
+        TODO: Implement match result processing
+        """
+        pass
+
+    def handle_league_standings_update(self, standings: list, round_id: int) -> None:
+        """
+        Handle LEAGUE_STANDINGS_UPDATE from League Manager.
+
+        Args:
+            standings: Current standings
+            round_id: Completed round number
+
+        TODO: Implement standings update processing
+        """
+        pass
+
+    def handle_round_completed(self, round_id: int, next_round_id: int = None) -> None:
+        """
+        Handle ROUND_COMPLETED from League Manager.
+
+        Args:
+            round_id: Completed round number
+            next_round_id: Next round number or None
+
+        TODO: Implement round completion handling
+        """
+        pass
+
+    def handle_league_completed(self, final_standings: list, total_rounds: int,
+                                 total_matches: int) -> None:
+        """
+        Handle LEAGUE_COMPLETED from League Manager.
+
+        Args:
+            final_standings: Final standings
+            total_rounds: Total rounds played
+            total_matches: Total matches played
+
+        TODO: Implement league completion handling
+        """
+        pass
+
+    def query_standings(self) -> dict:
+        """
+        Query current standings from League Manager.
+
+        Returns:
+            Standings data
+
+        TODO: Implement standings query
+        """
+        pass
+
+    def make_parity_choice(self, match_context: dict) -> str:
+        """
+        Make strategic parity choice for a match.
+
+        Args:
+            match_context: Context including opponent, history, etc.
+
+        Returns:
+            Parity choice ("even" or "odd")
+
+        TODO: Implement decision-making logic (delegates to strategy module)
+        """
+        pass
+
+
+# Global player instance
+player = None
+
+
+@app.route('/mcp', methods=['POST'])
+def handle_mcp_request():
+    """
+    Handle incoming MCP requests.
+
+    This endpoint receives JSON-RPC 2.0 requests.
+    """
+    data = request.get_json()
+
+    # For now, return a static JSON-RPC "OK" response
+    response = {
+        "jsonrpc": "2.0",
+        "result": {
+            "status": "OK",
+            "message": "Player is running",
+            "player_id": player.player_id if player else None,
+            "state": player.state if player else None
+        },
+        "id": data.get("id", 1)
+    }
+
+    return jsonify(response)
+
+
+def main():
+    """Main entry point"""
+    global player
+
+    # Player ID from command line or default
+    player_id = sys.argv[1] if len(sys.argv) > 1 else "P02"
+
+    # Initialize Player
+    player = Player(player_id)
+    player.start_player()
+
+    # Determine port based on player_id
+    # P01 -> 8101, P02 -> 8102, P03 -> 8103, P04 -> 8104
+    port_mapping = {
+        "P01": 8101,
+        "P02": 8102,
+        "P03": 8103,
+        "P04": 8104
+    }
+    port = port_mapping.get(player_id, 8102)
+
+    print(f"\n=== Player Starting ===")
+    print(f"Player ID: {player_id}")
+    print(f"Port: {port}")
+    print(f"Endpoint: http://localhost:{port}/mcp")
+    print("=======================\n")
+
+    app.run(host='0.0.0.0', port=port, debug=False)
+
+
+if __name__ == "__main__":
+    main()

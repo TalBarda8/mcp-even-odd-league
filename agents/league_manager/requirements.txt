@@ -1,0 +1,7 @@
+# League Manager Dependencies
+
+# Flask for HTTP server
+Flask>=3.0.0
+
+# Requests for MCP client
+requests>=2.31.0
