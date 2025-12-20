@@ -109,8 +109,8 @@ def handle_parity_choose(player, request_data: dict) -> dict:
     # Transition to CHOOSING state
     player.transition_state("CHOOSING", f"Received parity request for match {match_id}")
 
-    # P01 chooses "even", P02 chooses "odd"
-    if player.player_id == "P01":
+    # Player preferences: P01 and P03 choose "even", P02 and P04 choose "odd"
+    if player.player_id in ["P01", "P03"]:
         choice = "even"
     else:
         choice = "odd"
