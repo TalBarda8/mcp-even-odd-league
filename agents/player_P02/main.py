@@ -344,15 +344,9 @@ def main():
     player = Player(player_id)
     player.start_player()
 
-    # Determine port based on player_id
-    # P01 -> 8101, P02 -> 8102, P03 -> 8103, P04 -> 8104
-    port_mapping = {
-        "P01": 8101,
-        "P02": 8102,
-        "P03": 8103,
-        "P04": 8104
-    }
-    port = port_mapping.get(player_id, 8101)
+    # Determine port from configuration based on player_id
+    player_index = {"P01": 0, "P02": 1, "P03": 2, "P04": 3}.get(player_id, 0)
+    port = player.system_config.network.player_ports[player_index]
 
     print(f"\n=== Player Starting ===")
     print(f"Player ID: {player_id}")

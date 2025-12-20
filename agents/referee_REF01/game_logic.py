@@ -5,20 +5,33 @@ Implements even/odd game rules and winner determination.
 """
 
 import random
+import sys
+from pathlib import Path
 from typing import Dict, Any
 
+# Add SHARED to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "SHARED"))
 
-def draw_random_number(min_value: int = 1, max_value: int = 10) -> int:
+from league_sdk.config_loader import ConfigLoader
+
+
+def draw_random_number(min_value: int = None, max_value: int = None) -> int:
     """
     Draw a random number for the game.
 
     Args:
-        min_value: Minimum value (inclusive), default 1
-        max_value: Maximum value (inclusive), default 10
+        min_value: Minimum value (inclusive), defaults from config or 1
+        max_value: Maximum value (inclusive), defaults from config or 10
 
     Returns:
         Random integer between min_value and max_value
     """
+    # Load from config if not provided
+    if min_value is None or max_value is None:
+        config_min, config_max = ConfigLoader.get_game_number_range()
+        min_value = min_value or config_min
+        max_value = max_value or config_max
+
     return random.randint(min_value, max_value)
 
 

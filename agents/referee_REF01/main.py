@@ -186,10 +186,10 @@ class Referee:
         print(f"Player A: {player_A_id} ({player_A_endpoint})")
         print(f"Player B: {player_B_id} ({player_B_endpoint})")
 
-        # Timeout configurations
-        JOIN_ACK_TIMEOUT = 5  # seconds
-        PARITY_RESPONSE_TIMEOUT = 30  # seconds
-        MAX_RETRIES = 1
+        # Load timeout and retry configurations from config
+        JOIN_ACK_TIMEOUT = self.system_config.timeouts.game_join_ack_timeout_sec
+        PARITY_RESPONSE_TIMEOUT = self.system_config.timeouts.move_timeout_sec
+        MAX_RETRIES = ConfigLoader.get_max_retries()
 
         # Track timeouts for technical loss
         player_A_timeout = False

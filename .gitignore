@@ -30,6 +30,11 @@ SHARED/logs/*
 *.swo
 *~
 
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
 # OS
 .DS_Store
 .DS_Store?
