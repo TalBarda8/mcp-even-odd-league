@@ -52,7 +52,10 @@ build/
 # Testing
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
+coverage.xml
+*.cover
 
 # Temporary files
 *.log
