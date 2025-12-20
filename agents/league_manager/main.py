@@ -46,6 +46,11 @@ class LeagueManager:
         self.mcp_client = MCPClient()
         self.state = "WAITING_FOR_REGISTRATIONS"
 
+        # Phase 5: In-memory standings tracking
+        # Structure: {player_id: {"wins": int, "losses": int, "draws": int, "points": int, "matches_played": int}}
+        self.standings = {}
+        self.total_matches = 0
+
         print(f"League Manager initialized for league: {league_id}")
 
     def start_league_manager(self) -> None:
@@ -165,6 +170,136 @@ class LeagueManager:
         TODO: Implement league completion announcement
         """
         pass
+
+    def initialize_player_standings(self, player_id: str) -> None:
+        """
+        Initialize standings entry for a player.
+
+        Args:
+            player_id: Player identifier
+
+        Phase 5: In-memory standings initialization
+        """
+        if player_id not in self.standings:
+            self.standings[player_id] = {
+                "wins": 0,
+                "losses": 0,
+                "draws": 0,
+                "points": 0,
+                "matches_played": 0
+            }
+
+    def update_standings_from_match(self, match_result: dict) -> None:
+        """
+        Update standings based on match result.
+
+        Args:
+            match_result: Match result from MATCH_RESULT_REPORT
+
+        Phase 5: Update in-memory standings
+        Scoring: Win = 3 points, Draw = 1 point, Loss = 0 points
+        """
+        result = match_result.get("result", {})
+        score_dict = result.get("score", {})
+        details = result.get("details", {})
+        status = details.get("status", "")
+
+        # Get player IDs from score dict
+        player_ids = list(score_dict.keys())
+
+        if len(player_ids) != 2:
+            print(f"  ⚠️ WARNING: Expected 2 players in score, got {len(player_ids)}")
+            return
+
+        player_A_id = player_ids[0]
+        player_B_id = player_ids[1]
+
+        # Initialize if needed
+        self.initialize_player_standings(player_A_id)
+        self.initialize_player_standings(player_B_id)
+
+        # Update based on result
+        if status == "DRAW":
+            # Both players get 1 point
+            self.standings[player_A_id]["draws"] += 1
+            self.standings[player_A_id]["points"] += 1
+            self.standings[player_A_id]["matches_played"] += 1
+
+            self.standings[player_B_id]["draws"] += 1
+            self.standings[player_B_id]["points"] += 1
+            self.standings[player_B_id]["matches_played"] += 1
+
+        elif status == "TECHNICAL_LOSS":
+            # Technical loss: winner gets 3 points, loser gets 0
+            winner = result.get("winner")
+            if winner == player_A_id:
+                loser = player_B_id
+            else:
+                loser = player_A_id
+
+            self.standings[winner]["wins"] += 1
+            self.standings[winner]["points"] += 3
+            self.standings[winner]["matches_played"] += 1
+
+            self.standings[loser]["losses"] += 1
+            self.standings[loser]["points"] += 0
+            self.standings[loser]["matches_played"] += 1
+
+        else:  # Normal WIN
+            winner = result.get("winner")
+            if winner == player_A_id:
+                loser = player_B_id
+            else:
+                loser = player_A_id
+
+            self.standings[winner]["wins"] += 1
+            self.standings[winner]["points"] += 3
+            self.standings[winner]["matches_played"] += 1
+
+            self.standings[loser]["losses"] += 1
+            self.standings[loser]["points"] += 0
+            self.standings[loser]["matches_played"] += 1
+
+        self.total_matches += 1
+
+    def print_standings(self, title: str = "CURRENT STANDINGS") -> None:
+        """
+        Print current standings to console.
+
+        Args:
+            title: Title to display
+
+        Phase 5: Console output for standings
+        """
+        print(f"\n{'=' * 80}")
+        print(f"{title:^80}")
+        print(f"{'=' * 80}")
+
+        if not self.standings:
+            print("No matches played yet.")
+            print(f"{'=' * 80}\n")
+            return
+
+        # Sort by points (descending), then by wins (descending)
+        sorted_standings = sorted(
+            self.standings.items(),
+            key=lambda x: (x[1]["points"], x[1]["wins"]),
+            reverse=True
+        )
+
+        # Print header
+        print(f"{'Rank':<6} {'Player':<10} {'Played':<8} {'W':<4} {'D':<4} {'L':<4} {'Points':<8}")
+        print(f"{'-' * 80}")
+
+        # Print each player
+        for rank, (player_id, stats) in enumerate(sorted_standings, 1):
+            print(f"{rank:<6} {player_id:<10} {stats['matches_played']:<8} "
+                  f"{stats['wins']:<4} {stats['draws']:<4} {stats['losses']:<4} "
+                  f"{stats['points']:<8}")
+
+        print(f"{'=' * 80}")
+        print(f"Total matches played: {self.total_matches}")
+        print(f"{'=' * 80}\n")
 
     def query_standings(self, player_id: str, auth_token: str) -> dict:
         """

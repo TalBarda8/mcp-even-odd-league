@@ -116,7 +116,7 @@ def handle_match_result_report(league_manager, request_data: dict) -> dict:
     Returns:
         MATCH_RESULT_ACK response payload
 
-    NOTE: Phase 3 - Just log the result, no standings update yet
+    Phase 5: Now updates standings
     """
     from datetime import datetime
 
@@ -131,7 +131,9 @@ def handle_match_result_report(league_manager, request_data: dict) -> dict:
     print(f"  Score: {result.get('score')}")
     print(f"  Details: {result.get('details')}")
 
-    # For Phase 3, just acknowledge - no persistence
+    # Phase 5: Update standings
+    league_manager.update_standings_from_match(request_data)
+
     return {
         "protocol": "league.v2",
         "message_type": "MATCH_RESULT_ACK",
