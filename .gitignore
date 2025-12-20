@@ -25,6 +25,7 @@ SHARED/logs/*
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -51,3 +52,6 @@ htmlcov/
 # Temporary files
 *.log
 *.tmp
+
+# Course materials (not part of source)
+*.pdf
