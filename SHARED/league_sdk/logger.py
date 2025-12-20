@@ -48,12 +48,40 @@ class JsonLogger:
             event_type: Type of event (e.g., "PLAYER_REGISTERED")
             level: Log level (DEBUG, INFO, WARNING, ERROR)
             **details: Additional key-value pairs to include in log entry
-
-        TODO: Implement JSONL append
         """
-        # TODO: Create JSON object with timestamp, component, level, event_type, details
-        # TODO: Append to self.log_path as JSONL (one JSON object per line)
-        pass
+        import json
+
+        # Ensure log directory exists
+        self.log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create log entry
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "agent_id": self.component,
+            "level": level,
+            "event_type": event_type,
+            "data": details
+        }
+
+        # Append to log file as JSON line
+        with open(self.log_path, 'a') as f:
+            f.write(json.dumps(log_entry) + '\n')
+
+    def log_event(self, event_type: str, data: Optional[dict] = None) -> None:
+        """
+        Log an event with optional data.
+
+        Args:
+            event_type: Type of event (e.g., "TIMEOUT_GAME_JOIN_ACK")
+            data: Optional dictionary of event data
+
+        This method is called by agents (Referee/Player) for Phase 4 logging.
+        """
+        if data is None:
+            data = {}
+
+        # Use the log method with data as keyword arguments
+        self.log(event_type, level="INFO", **data)
 
     def debug(self, event_type: str, **details) -> None:
         """Log debug event"""
