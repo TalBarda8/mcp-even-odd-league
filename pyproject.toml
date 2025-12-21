@@ -53,12 +53,33 @@ addopts = [
 [tool.coverage.run]
 source = ["src"]
 omit = [
+    # Test files
     "*/tests/*",
     "*/__pycache__/*",
     "*/site-packages/*",
+
+    # Flask entry points (integration layer)
+    "*/agents/*/main.py",
+
+    # HTTP/MCP handlers (integration layer)
+    "*/agents/*/handlers.py",
+
+    # IO and networking modules (integration layer)
+    "*/league_sdk/mcp_client.py",
+    "*/league_sdk/logger.py",
+    "*/league_sdk/repositories.py",
+
+    # Stub/placeholder modules
+    "*/agents/*/strategy.py",
+    "*/agents/*/scheduler.py",
 ]
 
 [tool.coverage.report]
+# Core logic modules measured for coverage:
+# - game_logic.py: Even/Odd game mechanics (deterministic)
+# - config_loader.py: Configuration management (deterministic)
+# - config_models.py: Data models (deterministic)
+
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
