@@ -227,17 +227,41 @@ python3 -m mcp_even_odd_league.agents.player_P04.main P04
 
 ### Running Integration Tests
 
-The `tests/` directory contains automated integration tests that instantiate components programmatically (bypassing the normal multi-agent architecture). These are for testing purposes only:
+The `tests/` directory contains automated integration tests that instantiate components programmatically (bypassing the normal multi-agent architecture). These are for testing purposes only.
 
-```bash
-# Integration test: Full Round-Robin league (bypasses normal architecture)
-python3 tests/test_full_league.py
+**Prerequisites for Integration Tests:**
+1. Package must be installed: `pip3 install -e ".[dev]"`
+2. Only Player agents need to be running (League Manager and Referee are instantiated by the test)
 
-# Integration test: Single match
-python3 tests/test_match.py
-```
+**Step-by-step to run integration tests:**
 
-**Note:** Integration tests create League Manager and Referee instances directly rather than communicating with running servers. They require only Player agents to be running as servers.
+1. **Start Player Agents** (in 4 separate terminals):
+   ```bash
+   # Terminal 1
+   python3 -m mcp_even_odd_league.agents.player_P01.main P01
+
+   # Terminal 2
+   python3 -m mcp_even_odd_league.agents.player_P02.main P02
+
+   # Terminal 3
+   python3 -m mcp_even_odd_league.agents.player_P03.main P03
+
+   # Terminal 4
+   python3 -m mcp_even_odd_league.agents.player_P04.main P04
+   ```
+
+   Wait until all show: `Running on http://...`
+
+2. **Run Integration Test** (in a 5th terminal):
+   ```bash
+   # Full Round-Robin league test (6 matches)
+   python3 tests/test_full_league.py
+
+   # Or single match test (requires only P01 and P02)
+   python3 tests/test_match.py
+   ```
+
+**Note:** Integration tests create League Manager and Referee instances directly rather than communicating with running servers.
 
 ### Integration Test Expected Output
 
@@ -846,6 +870,55 @@ TIMEOUT_DEFAULT=10
 ---
 
 ## Troubleshooting
+
+### Quick Start Issues
+
+#### "ModuleNotFoundError" when running tests
+
+**Error:**
+```
+ModuleNotFoundError: No module named 'mcp_even_odd_league'
+```
+
+**Solution:**
+```bash
+# Install the package in development mode
+pip3 install -e ".[dev]"
+```
+
+#### "FileNotFoundError" in test files
+
+**Error:**
+```
+FileNotFoundError: [...]/tests/agents/referee_REF01/main.py
+```
+
+**Solution:** This was fixed in the latest version. Pull the latest changes:
+```bash
+git pull origin main
+```
+
+If still seeing this error, the test files have incorrect import paths. They should import from `mcp_even_odd_league.agents.*` not from local paths.
+
+#### Players not responding during integration tests
+
+**Symptoms:**
+- Test hangs or times out
+- "Connection refused" errors
+
+**Solution:**
+1. Ensure all required player agents are running BEFORE starting the test
+2. Check each player terminal shows: `Running on http://...`
+3. Verify ports 8101, 8102, 8103, 8104 are not blocked
+
+#### Killing stuck processes
+
+```bash
+# Kill all agents on their ports
+for p in 8000 8001 8101 8102 8103 8104; do
+  lsof -ti :$p | xargs kill -9 2>/dev/null
+done
+```
 
 ### Common Issues
 

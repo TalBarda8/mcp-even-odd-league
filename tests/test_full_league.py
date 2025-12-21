@@ -14,30 +14,18 @@ import importlib.util
 from pathlib import Path
 from itertools import combinations
 
+# Get project root (parent of tests directory)
+project_root = Path(__file__).parent.parent
+
 # Add SHARED to path
-sys.path.insert(0, str(Path(__file__).parent / "SHARED"))
+sys.path.insert(0, str(project_root / "SHARED"))
 
-# Add referee directory to path for its local imports (keep in path for runtime imports)
-referee_dir = Path(__file__).parent / "agents" / "referee_REF01"
-sys.path.insert(0, str(referee_dir))
+# Add src to path to enable package imports
+sys.path.insert(0, str(project_root / "src"))
 
-# Add league_manager directory for its local imports
-lm_dir = Path(__file__).parent / "agents" / "league_manager"
-sys.path.insert(0, str(lm_dir))
-
-# Import Referee using importlib
-referee_main_path = referee_dir / "main.py"
-spec_ref = importlib.util.spec_from_file_location("referee_main", referee_main_path)
-referee_module = importlib.util.module_from_spec(spec_ref)
-spec_ref.loader.exec_module(referee_module)
-Referee = referee_module.Referee
-
-# Import LeagueManager using importlib
-lm_main_path = lm_dir / "main.py"
-spec_lm = importlib.util.spec_from_file_location("league_manager_main", lm_main_path)
-lm_module = importlib.util.module_from_spec(spec_lm)
-spec_lm.loader.exec_module(lm_module)
-LeagueManager = lm_module.LeagueManager
+# Import from the installed package
+from mcp_even_odd_league.agents.referee_REF01.main import Referee
+from mcp_even_odd_league.agents.league_manager.main import LeagueManager
 
 
 def generate_round_robin_matches(players):

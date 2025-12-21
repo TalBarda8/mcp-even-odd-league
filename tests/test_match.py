@@ -8,14 +8,17 @@ This demonstrates the full match flow for Phase 3.
 import sys
 from pathlib import Path
 
+# Get project root (parent of tests directory)
+project_root = Path(__file__).parent.parent
+
 # Add SHARED to path
-sys.path.insert(0, str(Path(__file__).parent / "SHARED"))
+sys.path.insert(0, str(project_root / "SHARED"))
 
-# Add referee to path
-referee_path = Path(__file__).parent / "agents" / "referee_REF01"
-sys.path.insert(0, str(referee_path))
+# Add src to path to enable package imports
+sys.path.insert(0, str(project_root / "src"))
 
-from main import Referee
+# Import from the installed package
+from mcp_even_odd_league.agents.referee_REF01.main import Referee
 
 
 def main():
