@@ -162,36 +162,43 @@ Package installed: v0.1.0
 
 ## Quick Start
 
+**IMPORTANT:** Before running, ensure the package is installed:
+```bash
+pip3 install -e ".[dev]"
+```
+
+All commands use Python module syntax (`python3 -m mcp_even_odd_league.agents...`). No manual code changes or PYTHONPATH modifications are needed.
+
 ### Running a Full League (4 Players)
 
 **Terminal 1 - League Manager:**
 ```bash
-python3 agents/league_manager/main.py
+python3 -m mcp_even_odd_league.agents.league_manager.main
 ```
 
 **Terminal 2 - Player P01:**
 ```bash
-python3 agents/player_P01/main.py P01
+python3 -m mcp_even_odd_league.agents.player_P01.main P01
 ```
 
 **Terminal 3 - Player P02:**
 ```bash
-python3 agents/player_P02/main.py P02
+python3 -m mcp_even_odd_league.agents.player_P02.main P02
 ```
 
 **Terminal 4 - Player P03:**
 ```bash
-python3 agents/player_P03/main.py P03
+python3 -m mcp_even_odd_league.agents.player_P03.main P03
 ```
 
 **Terminal 5 - Player P04:**
 ```bash
-python3 agents/player_P04/main.py P04
+python3 -m mcp_even_odd_league.agents.player_P04.main P04
 ```
 
 **Terminal 6 - Run League:**
 ```bash
-python3 test_full_league.py
+python3 tests/test_full_league.py
 ```
 
 ### Expected Output
@@ -474,12 +481,35 @@ The system uses **JSON-RPC 2.0** over **HTTP POST** for all inter-agent communic
 
 ## Running the League
 
+### Prerequisites
+
+Before running the league, ensure you have:
+
+1. **Installed the package** (see [Installation](#installation)):
+   ```bash
+   pip3 install -e ".[dev]"
+   ```
+
+2. **No manual code modifications required** - all commands below work out of the box
+
+3. **Understand the command format** - all agents are run using Python's module syntax:
+   ```bash
+   python3 -m mcp_even_odd_league.agents.<agent_name>.main [arguments]
+   ```
+
 ### Step-by-Step Execution
+
+**Execution Order:**
+1. Start League Manager (Terminal 1)
+2. Start all Player agents (Terminals 2-5) - **wait for each to fully start before proceeding**
+3. Run the test script (Terminal 6) - this triggers the matches
+
+**Note:** The agents must be running and listening on their ports before the test script is executed.
 
 #### 1. Start League Manager
 
 ```bash
-python3 agents/league_manager/main.py
+python3 -m mcp_even_odd_league.agents.league_manager.main
 ```
 
 **Expected Output:**
@@ -503,16 +533,16 @@ Endpoint: http://localhost:8000/mcp
 
 ```bash
 # Terminal 2
-python3 agents/player_P01/main.py P01
+python3 -m mcp_even_odd_league.agents.player_P01.main P01
 
 # Terminal 3
-python3 agents/player_P02/main.py P02
+python3 -m mcp_even_odd_league.agents.player_P02.main P02
 
 # Terminal 4
-python3 agents/player_P03/main.py P03
+python3 -m mcp_even_odd_league.agents.player_P03.main P03
 
 # Terminal 5
-python3 agents/player_P04/main.py P04
+python3 -m mcp_even_odd_league.agents.player_P04.main P04
 ```
 
 **Expected Output (per player):**
@@ -533,7 +563,7 @@ Endpoint: http://localhost:8101/mcp
 #### 3. Run the League
 
 ```bash
-python3 test_full_league.py
+python3 tests/test_full_league.py
 ```
 
 This orchestrates the full round-robin tournament with real-time output.
@@ -544,7 +574,7 @@ For quick testing of a single match:
 
 ```bash
 # Ensure League Manager and 2 players are running
-python3 test_match.py
+python3 tests/test_match.py
 ```
 
 ---
@@ -830,7 +860,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 **Run with debug output:**
 ```bash
-python3 agents/player_P01/main.py P01 --debug
+python3 -m mcp_even_odd_league.agents.player_P01.main P01 --debug
 ```
 
 ---

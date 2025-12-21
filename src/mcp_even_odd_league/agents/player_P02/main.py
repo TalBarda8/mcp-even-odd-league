@@ -8,10 +8,10 @@ import sys
 
 from flask import Flask, request, jsonify
 from mcp_even_odd_league.league_sdk.config_loader import ConfigLoader
-from league_sdk.repositories import PlayerHistoryRepository
-from league_sdk.logger import JsonLogger
-from league_sdk.mcp_client import MCPClient
-from league_sdk.config_models import SystemConfig
+from mcp_even_odd_league.league_sdk.repositories import PlayerHistoryRepository
+from mcp_even_odd_league.league_sdk.logger import JsonLogger
+from mcp_even_odd_league.league_sdk.mcp_client import MCPClient
+from mcp_even_odd_league.league_sdk.config_models import SystemConfig
 
 
 app = Flask(__name__)
