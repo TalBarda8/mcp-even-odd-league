@@ -169,39 +169,79 @@ pip3 install -e ".[dev]"
 
 All commands use Python module syntax (`python3 -m mcp_even_odd_league.agents...`). No manual code changes or PYTHONPATH modifications are needed.
 
-### Running a Full League (4 Players)
+### Multi-Agent System Architecture
+
+The system runs as **6 independent server processes** communicating via HTTP/MCP:
+
+```
+League Manager (port 8000)
+      ↓
+Referee REF01 (port 8001) ← coordinates matches
+      ↓
+Player Agents (ports 8101-8104) ← autonomous participants
+```
+
+### Running the Multi-Agent System (6 Terminals)
+
+Start each agent in a separate terminal in this order:
 
 **Terminal 1 - League Manager:**
 ```bash
 python3 -m mcp_even_odd_league.agents.league_manager.main
 ```
+*Listens on port 8000*
 
-**Terminal 2 - Player P01:**
+**Terminal 2 - Referee REF01:**
+```bash
+python3 -m mcp_even_odd_league.agents.referee_REF01.main REF01
+```
+*Listens on port 8001*
+
+**Terminal 3 - Player P01:**
 ```bash
 python3 -m mcp_even_odd_league.agents.player_P01.main P01
 ```
+*Listens on port 8101*
 
-**Terminal 3 - Player P02:**
+**Terminal 4 - Player P02:**
 ```bash
 python3 -m mcp_even_odd_league.agents.player_P02.main P02
 ```
+*Listens on port 8102*
 
-**Terminal 4 - Player P03:**
+**Terminal 5 - Player P03:**
 ```bash
 python3 -m mcp_even_odd_league.agents.player_P03.main P03
 ```
+*Listens on port 8103*
 
-**Terminal 5 - Player P04:**
+**Terminal 6 - Player P04:**
 ```bash
 python3 -m mcp_even_odd_league.agents.player_P04.main P04
 ```
+*Listens on port 8104*
 
-**Terminal 6 - Run League:**
+**Verify All Agents Are Running:**
+- Each terminal should display: `Running on http://...`
+- All 6 agents must be active before triggering matches
+
+### Running Integration Tests
+
+The `tests/` directory contains automated integration tests that instantiate components programmatically (bypassing the normal multi-agent architecture). These are for testing purposes only:
+
 ```bash
+# Integration test: Full Round-Robin league (bypasses normal architecture)
 python3 tests/test_full_league.py
+
+# Integration test: Single match
+python3 tests/test_match.py
 ```
 
-### Expected Output
+**Note:** Integration tests create League Manager and Referee instances directly rather than communicating with running servers. They require only Player agents to be running as servers.
+
+### Integration Test Expected Output
+
+When running `python3 tests/test_full_league.py`, you should see:
 
 ```
 ================================================================================
@@ -229,10 +269,12 @@ Match 1/6: P01 vs P02 (LEAGUE_MATCH_001)
 ...
 ```
 
-The test orchestrates **6 matches** (every player plays every other player once) and displays:
+The integration test orchestrates **6 matches** (every player plays every other player once) and displays:
 - Real-time match results
 - Standings after each match
 - Final league champion
+
+**Important:** This output is from the automated integration test. In production, matches would be triggered via MCP messages to the running League Manager server.
 
 ---
 
@@ -501,10 +543,10 @@ Before running the league, ensure you have:
 
 **Execution Order:**
 1. Start League Manager (Terminal 1)
-2. Start all Player agents (Terminals 2-5) - **wait for each to fully start before proceeding**
-3. Run the test script (Terminal 6) - this triggers the matches
+2. Start Referee REF01 (Terminal 2)
+3. Start all Player agents (Terminals 3-6) - **wait for each to fully start before proceeding**
 
-**Note:** The agents must be running and listening on their ports before the test script is executed.
+**Note:** All 6 agents must be running and listening on their ports. The League Manager can then coordinate matches by sending match assignments to the Referee, which orchestrates gameplay with the Players.
 
 #### 1. Start League Manager
 
@@ -527,21 +569,42 @@ Endpoint: http://localhost:8000/mcp
  * Running on http://127.0.0.1:8000
 ```
 
-#### 2. Start Player Agents
+#### 2. Start Referee
+
+```bash
+python3 -m mcp_even_odd_league.agents.referee_REF01.main REF01
+```
+
+**Expected Output:**
+```
+Referee initialized: REF01
+Starting Referee REF01
+
+=== Referee Starting ===
+Referee ID: REF01
+Port: 8001
+Endpoint: http://localhost:8001/mcp
+========================
+
+ * Serving Flask app 'main'
+ * Running on http://127.0.0.1:8001
+```
+
+#### 3. Start Player Agents
 
 **In separate terminals:**
 
 ```bash
-# Terminal 2
+# Terminal 3
 python3 -m mcp_even_odd_league.agents.player_P01.main P01
 
-# Terminal 3
+# Terminal 4
 python3 -m mcp_even_odd_league.agents.player_P02.main P02
 
-# Terminal 4
+# Terminal 5
 python3 -m mcp_even_odd_league.agents.player_P03.main P03
 
-# Terminal 5
+# Terminal 6
 python3 -m mcp_even_odd_league.agents.player_P04.main P04
 ```
 
@@ -560,22 +623,23 @@ Endpoint: http://localhost:8101/mcp
  * Running on http://127.0.0.1:8101
 ```
 
-#### 3. Run the League
+#### 4. Triggering Matches
 
+With all 6 agents running, matches can be triggered by:
+
+**Option A: Integration Test (automated)**
 ```bash
 python3 tests/test_full_league.py
 ```
+*Note: This bypasses the running League Manager/Referee servers and instantiates them programmatically for automated testing.*
 
-This orchestrates the full round-robin tournament with real-time output.
+**Option B: Manual MCP Messages (production)**
+Send JSON-RPC requests to the League Manager endpoint to:
+1. Register players
+2. Create schedule
+3. Trigger round execution
 
-### Alternative: Run Individual Match
-
-For quick testing of a single match:
-
-```bash
-# Ensure League Manager and 2 players are running
-python3 tests/test_match.py
-```
+See [docs/architecture/mcp_message_contracts.md](docs/architecture/mcp_message_contracts.md) for message specifications.
 
 ---
 
