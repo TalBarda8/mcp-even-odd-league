@@ -3,10 +3,10 @@
 **Multi-Agent Game System with Model Context Protocol**
 
 **Course:** AI Agents with Model Context Protocol
-**Institution:** [Your Institution]
+**Institution:** Reichman University
 **Academic Year:** 2024-2025
 **Protocol Version:** league.v2
-**Author:** [Your Name]
+**Author:** Tal Barda
 
 ---
 
@@ -1239,8 +1239,8 @@ This project is submitted as part of academic coursework for **AI Agents with Mo
 
 **Citation:**
 ```
-[Your Name]. (2025). MCP Even/Odd League: Multi-Agent Game System
-with Model Context Protocol. [Course Name], [Institution].
+Tal Barda. (2025). MCP Even/Odd League: Multi-Agent Game System
+with Model Context Protocol. AI Agents with Model Context Protocol, Reichman University.
 https://github.com/TalBarda8/mcp-even-odd-league
 ```
 
@@ -1250,7 +1250,7 @@ https://github.com/TalBarda8/mcp-even-odd-league
 
 **Course:** AI Agents with Model Context Protocol
 **Instructor:** Dr. Yoram Segal
-**Institution:** [Your Institution]
+**Institution:** Reichman University
 **Academic Year:** 2024-2025
 
 **Technologies:**
@@ -1268,8 +1268,7 @@ https://github.com/TalBarda8/mcp-even-odd-league
 
 ## Contact
 
-**Author:** [Your Name]
-**Email:** [Your Email]
+**Author:** Tal Barda
 **GitHub:** https://github.com/TalBarda8/mcp-even-odd-league
 
 **Project Issues:** https://github.com/TalBarda8/mcp-even-odd-league/issues
