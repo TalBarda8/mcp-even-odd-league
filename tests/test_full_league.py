@@ -114,7 +114,7 @@ def main():
         print(f"{'=' * 78}")
 
         try:
-            # Run the match
+            # Run the match (with league manager reporting disabled for integration test)
             result = referee.run_match(
                 match_id=match_id,
                 player_A_id=player_A_id,
@@ -122,7 +122,8 @@ def main():
                 player_A_endpoint=player_endpoints[player_A_id],
                 player_B_endpoint=player_endpoints[player_B_id],
                 league_id=league_id,
-                round_id=round_id
+                round_id=round_id,
+                report_to_league_manager=False  # Integration test handles reporting locally
             )
 
             match_results.append(result)

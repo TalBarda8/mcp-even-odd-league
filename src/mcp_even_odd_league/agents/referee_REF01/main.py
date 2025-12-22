@@ -153,7 +153,7 @@ class Referee:
 
     def run_match(self, match_id: str, player_A_id: str, player_B_id: str,
                   player_A_endpoint: str, player_B_endpoint: str,
-                  league_id: str, round_id: int) -> dict:
+                  league_id: str, round_id: int, report_to_league_manager: bool = True) -> dict:
         """
         Run a complete match between two players with timeout and retry handling.
 
@@ -165,6 +165,8 @@ class Referee:
             player_B_endpoint: Player B's MCP endpoint
             league_id: League identifier
             round_id: Round number
+            report_to_league_manager: If True, sends MATCH_RESULT_REPORT to League Manager (default: True)
+                                     Set to False for integration tests that handle reporting locally
 
         Returns:
             Match result dictionary
@@ -312,7 +314,7 @@ class Referee:
             }
 
             # Skip to reporting
-            self._report_technical_loss(match_id, league_id, round_id, result, player_A_id, player_B_id)
+            self._report_technical_loss(match_id, league_id, round_id, result, player_A_id, player_B_id, report_to_league_manager)
             return result
 
         # Step 2: Send CHOOSE_PARITY_CALL to both players with timeout and retry
@@ -446,7 +448,7 @@ class Referee:
             }
 
             # Skip to reporting
-            self._report_technical_loss(match_id, league_id, round_id, result, player_A_id, player_B_id)
+            self._report_technical_loss(match_id, league_id, round_id, result, player_A_id, player_B_id, report_to_league_manager)
             return result
 
         # Step 3: Draw number and determine winner (normal path)
@@ -531,16 +533,20 @@ class Referee:
             }
         )
 
-        league_manager_endpoint = f"http://localhost:{self.system_config.network.league_manager_port}/mcp"
-        report_ack = self.mcp_client.send_request("report_match_result", match_report, league_manager_endpoint)
+        if report_to_league_manager:
+            league_manager_endpoint = f"http://localhost:{self.system_config.network.league_manager_port}/mcp"
+            report_ack = self.mcp_client.send_request("report_match_result", match_report, league_manager_endpoint)
+            print(f"  League Manager acknowledged: {report_ack.get('status')}")
+        else:
+            print(f"  Skipping League Manager report (integration test mode)")
 
-        print(f"  League Manager acknowledged: {report_ack.get('status')}")
         print(f"\n=== Match {match_id} Complete ===\n")
 
         return result
 
     def _report_technical_loss(self, match_id: str, league_id: str, round_id: int,
-                                result: dict, player_A_id: str, player_B_id: str) -> None:
+                                result: dict, player_A_id: str, player_B_id: str,
+                                report_to_league_manager: bool = True) -> None:
         """
         Report technical loss result to League Manager.
 
@@ -551,6 +557,7 @@ class Referee:
             result: Match result with technical loss info
             player_A_id: Player A's ID
             player_B_id: Player B's ID
+            report_to_league_manager: If True, sends report to League Manager
         """
         print("\nReporting technical loss to League Manager...")
 
@@ -581,10 +588,13 @@ class Referee:
             }
         )
 
-        league_manager_endpoint = f"http://localhost:{self.system_config.network.league_manager_port}/mcp"
-        report_ack = self.mcp_client.send_request("report_match_result", match_report, league_manager_endpoint)
+        if report_to_league_manager:
+            league_manager_endpoint = f"http://localhost:{self.system_config.network.league_manager_port}/mcp"
+            report_ack = self.mcp_client.send_request("report_match_result", match_report, league_manager_endpoint)
+            print(f"  League Manager acknowledged: {report_ack.get('status')}")
+        else:
+            print(f"  Skipping League Manager report (integration test mode)")
 
-        print(f"  League Manager acknowledged: {report_ack.get('status')}")
         print(f"\n=== Match {match_id} Complete (Technical Loss) ===\n")
 
 

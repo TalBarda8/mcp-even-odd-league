@@ -68,7 +68,8 @@ def main():
             player_A_endpoint=player_A_endpoint,
             player_B_endpoint=player_B_endpoint,
             league_id=league_id,
-            round_id=round_id
+            round_id=round_id,
+            report_to_league_manager=True  # This test expects League Manager to be running
         )
 
         # Display final result
