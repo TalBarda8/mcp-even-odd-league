@@ -162,16 +162,99 @@ Package installed: v0.1.0
 
 ## Quick Start
 
-**IMPORTANT:** Before running, ensure the package is installed:
+**CRITICAL:** This project has TWO ways to run - choose the correct one for your use case!
+
+| Mode | Use Case | Terminals | League Manager | Referee | What Runs |
+|------|----------|-----------|----------------|---------|-----------|
+| **Integration Test** ✅ | Grading, Demo | 5 | In-memory (test) | In-memory (test) | Automatic 6-match league |
+| **Production System** | Architecture Study | 6 | HTTP server | HTTP server | Manual MCP messages needed |
+
+**👉 For grading/demonstration: Use Integration Test Mode (scroll down) 👈**
+
+---
+
+## ⚡ RECOMMENDED: Integration Test Mode (Automated Demo)
+
+**Best for:** Grading, demonstration, testing
+**What it does:** Automatically runs a full 6-match Round-Robin league
+**Terminals needed:** 5 (4 players + 1 test script)
+
+### Prerequisites
+
 ```bash
+# 1. Install the package
 pip3 install -e ".[dev]"
+
+# 2. Kill any stuck processes (if needed)
+for p in 8000 8001 8101 8102 8103 8104; do
+  lsof -ti :$p | xargs kill -9 2>/dev/null
+done
 ```
 
-All commands use Python module syntax (`python3 -m mcp_even_odd_league.agents...`). No manual code changes or PYTHONPATH modifications are needed.
+### Step-by-Step Instructions
 
-### Multi-Agent System Architecture
+**Terminal 1 - Player P01:**
+```bash
+python3 -m mcp_even_odd_league.agents.player_P01.main P01
+```
+Wait for: `* Running on http://127.0.0.1:8101`
 
-The system runs as **6 independent server processes** communicating via HTTP/MCP:
+**Terminal 2 - Player P02:**
+```bash
+python3 -m mcp_even_odd_league.agents.player_P02.main P02
+```
+Wait for: `* Running on http://127.0.0.1:8102`
+
+**Terminal 3 - Player P03:**
+```bash
+python3 -m mcp_even_odd_league.agents.player_P03.main P03
+```
+Wait for: `* Running on http://127.0.0.1:8103`
+
+**Terminal 4 - Player P04:**
+```bash
+python3 -m mcp_even_odd_league.agents.player_P04.main P04
+```
+Wait for: `* Running on http://127.0.0.1:8104`
+
+**Terminal 5 - Run Test:**
+```bash
+# Full Round-Robin league (6 matches, automatic standings)
+python3 tests/test_full_league.py
+```
+
+### Expected Output
+
+The test will automatically:
+1. Create League Manager in-memory
+2. Create Referee in-memory
+3. Run 6 matches (P01 vs P02, P01 vs P03, P01 vs P04, P02 vs P03, P02 vs P04, P03 vs P04)
+4. Display standings after each match
+5. Declare a league champion
+
+You should see:
+```
+================================================================================
+MCP Even/Odd League - Phase 6 Full League Test
+================================================================================
+...
+🎮 Match 1/6: P01 vs P02 (LEAGUE_MATCH_001)
+  Drawn number: 5 (odd)
+  Winner: P02
+...
+🏆 LEAGUE CHAMPION: [Winner] 🏆
+```
+
+---
+
+## 🏗️ ADVANCED: Production Multi-Agent System (6 Terminals)
+
+**Best for:** Development, understanding architecture, production deployment
+**What it does:** Runs all 6 agents as independent HTTP servers
+**Terminals needed:** 6 agents + manual coordination
+**Status:** ⚠️ Requires manual MCP message sending to trigger matches
+
+### Architecture
 
 ```
 League Manager (port 8000)
@@ -181,9 +264,7 @@ Referee REF01 (port 8001) ← coordinates matches
 Player Agents (ports 8101-8104) ← autonomous participants
 ```
 
-### Running the Multi-Agent System (6 Terminals)
-
-Start each agent in a separate terminal in this order:
+### Step-by-Step Instructions
 
 **Terminal 1 - League Manager:**
 ```bash
@@ -223,45 +304,32 @@ python3 -m mcp_even_odd_league.agents.player_P04.main P04
 
 **Verify All Agents Are Running:**
 - Each terminal should display: `Running on http://...`
-- All 6 agents must be active before triggering matches
 
-### Running Integration Tests
+### Triggering Matches
 
-The `tests/` directory contains automated integration tests that instantiate components programmatically (bypassing the normal multi-agent architecture). These are for testing purposes only.
+With all 6 agents running, you need to send MCP messages manually to coordinate matches. See [docs/architecture/mcp_message_contracts.md](docs/architecture/mcp_message_contracts.md) for message specifications.
 
-**Prerequisites for Integration Tests:**
-1. Package must be installed: `pip3 install -e ".[dev]"`
-2. Only Player agents need to be running (League Manager and Referee are instantiated by the test)
+**Note:** A coordinator script to automate this is planned but not yet implemented. For now, use Integration Test Mode for demonstrations.
 
-**Step-by-step to run integration tests:**
+---
 
-1. **Start Player Agents** (in 4 separate terminals):
-   ```bash
-   # Terminal 1
-   python3 -m mcp_even_odd_league.agents.player_P01.main P01
+## Additional Integration Tests
 
-   # Terminal 2
-   python3 -m mcp_even_odd_league.agents.player_P02.main P02
+Once you have the 4 players running, you can also try these tests:
 
-   # Terminal 3
-   python3 -m mcp_even_odd_league.agents.player_P03.main P03
+**Single Match Test (2 players only):**
+```bash
+# Requires only P01 and P02 running
+python3 tests/test_match.py
+```
 
-   # Terminal 4
-   python3 -m mcp_even_odd_league.agents.player_P04.main P04
-   ```
+**Mini League Test (2 players):**
+```bash
+# Requires only P01 and P02 running
+python3 tests/test_league.py
+```
 
-   Wait until all show: `Running on http://...`
-
-2. **Run Integration Test** (in a 5th terminal):
-   ```bash
-   # Full Round-Robin league test (6 matches)
-   python3 tests/test_full_league.py
-
-   # Or single match test (requires only P01 and P02)
-   python3 tests/test_match.py
-   ```
-
-**Note:** Integration tests create League Manager and Referee instances directly rather than communicating with running servers.
+---
 
 ### Integration Test Expected Output
 
