@@ -4,6 +4,7 @@ Player - Message Handlers
 Handles incoming MCP messages and coordinates responses.
 """
 
+import random
 from datetime import datetime
 
 
@@ -109,11 +110,8 @@ def handle_parity_choose(player, request_data: dict) -> dict:
     # Transition to CHOOSING state
     player.transition_state("CHOOSING", f"Received parity request for match {match_id}")
 
-    # Player preferences: P01 and P03 choose "even", P02 and P04 choose "odd"
-    if player.player_id in ["P01", "P03"]:
-        choice = "even"
-    else:
-        choice = "odd"
+    # Randomly choose between "even" and "odd" for each round
+    choice = random.choice(["even", "odd"])
 
     print(f"  Choosing: {choice}")
 
