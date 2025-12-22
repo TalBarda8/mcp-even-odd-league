@@ -268,8 +268,8 @@ def handle_mcp_request():
 
         # Route based on method
         if method == "handle_game_invitation":
-            from handlers import handle_game_invitation
-            result = handle_game_invitation(player, params)
+            from mcp_even_odd_league.agents.player_P02 import handlers
+            result = handlers.handle_game_invitation(player, params)
             return jsonify({
                 "jsonrpc": "2.0",
                 "result": result,
@@ -277,8 +277,8 @@ def handle_mcp_request():
             })
 
         elif method == "parity_choose":
-            from handlers import handle_parity_choose
-            result = handle_parity_choose(player, params)
+            from mcp_even_odd_league.agents.player_P02 import handlers
+            result = handlers.handle_parity_choose(player, params)
             return jsonify({
                 "jsonrpc": "2.0",
                 "result": result,
@@ -286,8 +286,8 @@ def handle_mcp_request():
             })
 
         elif method == "notify_match_result":
-            from handlers import handle_notify_match_result
-            result = handle_notify_match_result(player, params)
+            from mcp_even_odd_league.agents.player_P02 import handlers
+            result = handlers.handle_notify_match_result(player, params)
             return jsonify({
                 "jsonrpc": "2.0",
                 "result": result,

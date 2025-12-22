@@ -175,7 +175,7 @@ class Referee:
         - Technical loss handling after retry failure
         """
         from datetime import datetime
-        import game_logic
+        from mcp_even_odd_league.agents.referee_REF01 import game_logic
 
         print(f"\n=== Starting Match {match_id} ===")
         print(f"Player A: {player_A_id} ({player_A_endpoint})")

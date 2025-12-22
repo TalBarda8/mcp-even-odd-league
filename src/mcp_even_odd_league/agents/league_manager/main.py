@@ -366,8 +366,8 @@ def handle_mcp_request():
 
         # Route based on method
         if method == "register_player":
-            from handlers import handle_league_register_request
-            result = handle_league_register_request(league_manager, params)
+            from mcp_even_odd_league.agents.league_manager import handlers
+            result = handlers.handle_league_register_request(league_manager, params)
 
             # Add protocol fields
             result["protocol"] = "league.v2"
@@ -381,8 +381,8 @@ def handle_mcp_request():
             })
 
         elif method == "register_referee":
-            from handlers import handle_referee_register_request
-            result = handle_referee_register_request(league_manager, params)
+            from mcp_even_odd_league.agents.league_manager import handlers
+            result = handlers.handle_referee_register_request(league_manager, params)
 
             # Add protocol fields
             result["protocol"] = "league.v2"
@@ -396,8 +396,8 @@ def handle_mcp_request():
             })
 
         elif method == "report_match_result":
-            from handlers import handle_match_result_report
-            result = handle_match_result_report(league_manager, params)
+            from mcp_even_odd_league.agents.league_manager import handlers
+            result = handlers.handle_match_result_report(league_manager, params)
 
             return jsonify({
                 "jsonrpc": "2.0",
